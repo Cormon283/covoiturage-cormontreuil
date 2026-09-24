@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Covoiturage - McDo Cormontreuil</title>
+<style>
+:root{--green:#1f7a45;--dark:#17221b;--bg:#f4f6f4;--card:#fff;--border:#d9dedb;--muted:#66736b;--warn:#fff4d8}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--dark)}
+.app{max-width:520px;margin:auto;min-height:100vh;padding:18px}.header{text-align:center;margin:8px 0 18px}
+.header h1{margin:0;font-size:28px}.header p{margin:5px 0;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:13px;box-shadow:0 2px 8px #0000000a}
+.warning{background:var(--warn);border:2px solid #e3b74f;text-align:center}.warning h2{margin:0 0 8px;font-size:18px}
+button{width:100%;padding:15px;border:0;border-radius:13px;font-size:16px;font-weight:700;margin:6px 0;cursor:pointer}
+.primary{background:var(--green);color:#fff}.secondary{background:#fff;border:1px solid var(--border);color:var(--dark)}
+.back{width:auto;padding:8px 0;background:transparent;text-align:left}.hidden{display:none}
+label{display:block;font-weight:700;margin:13px 0 6px}input,select{width:100%;padding:13px;border:1px solid var(--border);border-radius:10px;background:#fff;font-size:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.zones{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.zone{display:flex;align-items:center;gap:8px;border:1px solid var(--border);padding:12px;border-radius:10px;font-weight:400}.zone input{width:auto}
+.small{font-size:13px;color:var(--muted)}.bigtime{font-size:25px;font-weight:800}.row{display:flex;justify-content:space-between;gap:12px}
+.tag{display:inline-block;padding:5px 9px;background:#edf4ef;border-radius:20px;margin:3px;font-size:13px}.ok{text-align:center;font-size:45px}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="header"><h1>🚗 Covoiturage</h1><p>McDo Cormontreuil</p></header>
+
+<section id="home">
+<div class="card warning"><h2>⚠️ IMPORTANT</h2><strong>Aucun retard ne sera accepté.</strong><br>Veuillez appeler le restaurant pour tout imprévu.</div>
+<button class="primary" onclick="show('offer')">🚗 Je propose un trajet</button>
+<button class="secondary" onclick="listTrips()">👤 Je réserve une place</button>
+<button class="secondary" onclick="mine()">📋 Mes trajets / réservations</button>
+<div class="card small">🔒 Aucun numéro de téléphone ni adresse personnelle n'est communiqué entre équipiers.</div>
+</section>
+
+<section id="offer" class="hidden">
+<button class="back" onclick="show('home')">← Retour</button><h2>Proposer un trajet</h2>
+<form id="offerForm">
+<label>Prénom du conducteur</label><input id="driver" required>
+<label>Date</label><input id="date" type="date" required>
+<div class="grid"><div><label>Heure de récupération</label><input id="pickup" type="time" required></div><div><label>Arrivée au restaurant</label><input id="arrival" type="time" required></div></div>
+<div class="card small"><strong>L'heure de récupération est fixée par le conducteur.</strong> Elle s'impose à tous les passagers qui réservent.</div>
+<label>Zones desservies</label><div class="small">Plusieurs zones peuvent être sélectionnées. Le conducteur accepte de desservir les arrêts de chaque zone sélectionnée.</div>
+<div class="zones">
+<label class="zone"><input type="checkbox" name="zone" value="Nord"> Nord</label>
+<label class="zone"><input type="checkbox" name="zone" value="Est"> Est</label>
+<label class="zone"><input type="checkbox" name="zone" value="Sud"> Sud</label>
+<label class="zone"><input type="checkbox" name="zone" value="Ouest"> Ouest</label>
+</div>
+<label>Nombre de places</label><select id="seats"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+<p id="offerError"></p><button class="primary">Publier ma proposition</button>
+</form></section>
+
+<section id="trips" class="hidden"><button class="back" onclick="show('home')">← Retour</button><h2>Trajets proposés</h2><div id="tripList"></div></section>
+
+<section id="booking" class="hidden"><button class="back" onclick="listTrips()">← Trajets proposés</button><h2>Ma réservation</h2>
+<div id="summary" class="card"></div><form id="bookingForm">
+<label>Votre prénom</label><input id="passenger" required>
+<label>Votre zone</label><select id="passengerZone"></select>
+<label>Votre arrêt de bus</label><input id="stop" placeholder="Nom de l'arrêt" required>
+<div id="fixed" class="card"></div><button class="primary">Confirmer ma place</button></form></section>
+
+<section id="confirmed" class="hidden"><div class="ok">✓</div><h2 style="text-align:center">Réservation confirmée</h2><div id="confirmation" class="card"></div>
+<div class="card warning"><strong>Aucun retard ne sera accepté.</strong><br>Pour tout imprévu, veuillez appeler le restaurant.</div>
+<button class="primary" onclick="show('home')">Retour à l'accueil</button></section>
+
+<section id="my" class="hidden"><button class="back" onclick="show('home')">← Retour</button><h2>Mes trajets / réservations</h2><div id="myList"></div></section>
+</div>
+
+<script>
+const S={trips:JSON.parse(localStorage.getItem('covoit_trips')||'[]'), bookings:JSON.parse(localStorage.getItem('covoit_bookings')||'[]'), selected:null};
+const ids=['home','offer','trips','booking','confirmed','my'];
+function show(id){ids.forEach(x=>document.getElementById(x).classList.toggle('hidden',x!==id));}
+function save(){localStorage.setItem('covoit_trips',JSON.stringify(S.trips));localStorage.setItem('covoit_bookings',JSON.stringify(S.bookings));}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function fdate(s){let a=s.split('-');return a.length===3?a[2]+'/'+a[1]+'/'+a[0]:s;}
+document.getElementById('offerForm').onsubmit=e=>{
+ e.preventDefault();let zones=[...document.querySelectorAll('input[name=zone]:checked')].map(x=>x.value);
+ if(!zones.length){document.getElementById('offerError').textContent='Sélectionnez au moins une zone.';return;}
+ let n=+seats.value;S.trips.push({id:Date.now(),driver:driver.value,date:date.value,pickup:pickup.value,arrival:arrival.value,zones,seats:n,left:n,passengers:[]});save();e.target.reset();listTrips();
+};
+function listTrips(){show('trips');let b=document.getElementById('tripList');
+ if(!S.trips.length){b.innerHTML='<div class="card small">Aucun trajet proposé pour le moment.</div>';return;}
+ b.innerHTML=S.trips.map((t,i)=>`<div class="card"><div class="row"><strong>🚗 ${esc(t.driver)}</strong><span>${fdate(t.date)}</span></div><p>${t.zones.map(z=>`<span class="tag">${z}</span>`).join('')}</p><div class="bigtime">🚏 ${t.pickup}</div><div>🏁 Arrivée restaurant : ${t.arrival}</div><p>${t.left} place(s) disponible(s)</p><button class="primary" ${t.left<1?'disabled':''} onclick="book(${i})">${t.left?'Réserver ce trajet':'Complet'}</button></div>`).join('');
+}
+function book(i){S.selected=i;let t=S.trips[i];summary.innerHTML=`<strong>🚗 ${esc(t.driver)}</strong><p>${fdate(t.date)}</p><p>Zones : ${t.zones.join(' • ')}</p><div class="bigtime">🚏 ${t.pickup}</div><div>🏁 Arrivée restaurant : ${t.arrival}</div>`;
+ passengerZone.innerHTML=t.zones.map(z=>`<option>${z}</option>`).join('');fixed.innerHTML=`<div class="small">HEURE FIXÉE PAR LE CONDUCTEUR</div><div class="bigtime">${t.pickup}</div><p>Aucun retard ne sera accepté.</p>`;show('booking');
+}
+document.getElementById('bookingForm').onsubmit=e=>{
+ e.preventDefault();let t=S.trips[S.selected];if(!t||t.left<1)return;let p={name:passenger.value,zone:passengerZone.value,stop:stop.value,ref:'COV-'+String(Date.now()).slice(-6)};
+ t.left--;t.passengers.push(p);S.bookings.push({...p,tripId:t.id});save();
+ confirmation.innerHTML=`<strong>${p.ref}</strong><p>Conducteur : ${esc(t.driver)}</p><p>Date : ${fdate(t.date)}</p><p>Zone : ${p.zone}</p><p>Arrêt : ${esc(p.stop)}</p><div class="bigtime">🚏 ${t.pickup}</div><p>Arrivée au restaurant : ${t.arrival}</p>`;e.target.reset();show('confirmed');
+};
+function mine(){show('my');let h='';S.trips.forEach(t=>{h+=`<div class="card"><strong>🚗 ${esc(t.driver)}</strong><p>${fdate(t.date)} • ${t.zones.join(' / ')}</p><p>Récupération : <strong>${t.pickup}</strong><br>Arrivée restaurant : ${t.arrival}</p><p>${t.seats-t.left}/${t.seats} réservation(s)</p>${t.passengers.map(p=>`<div>🚏 ${esc(p.name)} — ${p.zone} — ${esc(p.stop)}</div>`).join('')}</div>`});S.bookings.forEach(p=>{let t=S.trips.find(x=>x.id===p.tripId);if(t)h+=`<div class="card"><strong>👤 ${p.ref} — ${esc(p.name)}</strong><p>${p.zone} • ${esc(p.stop)}</p><p>Récupération : <strong>${t.pickup}</strong><br>Conducteur : ${esc(t.driver)}</p></div>`});myList.innerHTML=h||'<div class="card small">Aucun trajet ou réservation.</div>';}
+</script>
+</body></html>
